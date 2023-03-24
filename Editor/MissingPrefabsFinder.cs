@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -6,7 +7,8 @@ public class MissingPrefabsFinder { // Based on this post: https://forum.unity.c
 	[MenuItem("Tools/Find Missing Prefabs", false, 50)]
 	static void Init() {
 		var allPrefabs = GetAllPrefabs();
-
+		ErrorAggregator errors = new();
+			
 		var count = 0;
 		EditorUtility.DisplayProgressBar("Processing...", "Begin Job", 0);
 
@@ -19,16 +21,18 @@ public class MissingPrefabsFinder { // Based on this post: https://forum.unity.c
 			}
 
 			GameObject go;
-			try {
+			try
+			{
 				go = (GameObject)PrefabUtility.InstantiatePrefab(o);
 				EditorUtility.DisplayProgressBar("Processing...", go.name, ++count / (float)allPrefabs.Length);
-				FindMissingPrefabInGO(go, prefab, true);
+				FindMissingPrefabInGO(go, prefab, true, errors);
 
 				GameObject.DestroyImmediate(go);
 
-			} catch {
-				Debug.Log("For some reason, prefab " + prefab + " won't cast to GameObject");
-
+			}
+			catch (Exception ex)
+			{
+				errors.Capture("For some reason, prefab " + prefab + " won't cast to GameObject", prefab);
 			}
 		}
 
@@ -36,20 +40,22 @@ public class MissingPrefabsFinder { // Based on this post: https://forum.unity.c
 	}
 
 
-	static void FindMissingPrefabInGO(GameObject g, string prefabName, bool isRoot) {
+	static void FindMissingPrefabInGO(GameObject g, string prefabName, bool isRoot, ErrorAggregator errors)
+	{
 		if (g.name.Contains("Missing Prefab")) {
-			Debug.LogError($"{prefabName} has missing prefab {g.name}");
+			errors.Capture($"{prefabName} has missing prefab {g.name}", prefabName);
 			return;
 
 		}
 
 		if (PrefabUtility.IsPrefabAssetMissing(g)) {
-			Debug.LogError($"{prefabName} has missing prefab {g.name}");
+			errors.Capture($"{prefabName} has missing prefab {g.name}", prefabName);
 			return;
 		}
 
-		if (PrefabUtility.IsDisconnectedFromPrefabAsset(g)) {
-			Debug.LogError($"{prefabName} has missing prefab {g.name}");
+		if (PrefabUtility.IsDisconnectedFromPrefabAsset(g))
+		{
+			errors.Capture($"{prefabName} has missing prefab {g.name}", prefabName);
 			return;
 		}
 
@@ -68,7 +74,7 @@ public class MissingPrefabsFinder { // Based on this post: https://forum.unity.c
 		// Now recurse through each child GO (if there are any):
 		foreach (Transform childT in g.transform) {
 			//Debug.Log("Searching " + childT.name  + " " );
-			FindMissingPrefabInGO(childT.gameObject, prefabName, false);
+			FindMissingPrefabInGO(childT.gameObject, prefabName, false, errors);
 		}
 	}
 
