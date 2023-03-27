@@ -1,12 +1,19 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
 public class MissingPrefabsFinder { // Based on this post: https://forum.unity.com/threads/detecting-missing-nested-prefab.697562/
+	public static ErrorAggregator Run()
+	{
+		return Init();
+	}
+	
 	[MenuItem("Tools/Find Missing Prefabs", false, 50)]
-	static void Init() {
+	static ErrorAggregator Init() {
 		var allPrefabs = GetAllPrefabs();
-
+		ErrorAggregator errors = new();
+			
 		var count = 0;
 		EditorUtility.DisplayProgressBar("Processing...", "Begin Job", 0);
 
@@ -19,38 +26,37 @@ public class MissingPrefabsFinder { // Based on this post: https://forum.unity.c
 			}
 
 			GameObject go;
-			try {
+			try
+			{
 				go = (GameObject)PrefabUtility.InstantiatePrefab(o);
 				EditorUtility.DisplayProgressBar("Processing...", go.name, ++count / (float)allPrefabs.Length);
-				FindMissingPrefabInGO(go, prefab, true);
+				FindMissingPrefabInGO(go, prefab, true, errors);
 
 				GameObject.DestroyImmediate(go);
 
-			} catch {
-				Debug.Log("For some reason, prefab " + prefab + " won't cast to GameObject");
-
+			}
+			catch (Exception ex)
+			{
+				Debug.LogError("For some reason, prefab " + prefab + " won't cast to GameObject");
 			}
 		}
 
 		EditorUtility.ClearProgressBar();
+		return errors;
 	}
 
 
-	static void FindMissingPrefabInGO(GameObject g, string prefabName, bool isRoot) {
-		if (g.name.Contains("Missing Prefab")) {
-			Debug.LogError($"{prefabName} has missing prefab {g.name}");
+	static void FindMissingPrefabInGO(GameObject g, string prefabName, bool isRoot, ErrorAggregator errors)
+	{
+		if (g.name.Contains("Missing Prefab") || PrefabUtility.IsPrefabAssetMissing(g) || PrefabUtility.IsDisconnectedFromPrefabAsset(g))
+		{
+			errors.Capture(new ErrorAggregator.MissingPrefab()
+			{
+				gameobject = g,
+				prefab = prefabName,
+			});
 			return;
 
-		}
-
-		if (PrefabUtility.IsPrefabAssetMissing(g)) {
-			Debug.LogError($"{prefabName} has missing prefab {g.name}");
-			return;
-		}
-
-		if (PrefabUtility.IsDisconnectedFromPrefabAsset(g)) {
-			Debug.LogError($"{prefabName} has missing prefab {g.name}");
-			return;
 		}
 
 		if (!isRoot) {
@@ -68,7 +74,7 @@ public class MissingPrefabsFinder { // Based on this post: https://forum.unity.c
 		// Now recurse through each child GO (if there are any):
 		foreach (Transform childT in g.transform) {
 			//Debug.Log("Searching " + childT.name  + " " );
-			FindMissingPrefabInGO(childT.gameObject, prefabName, false);
+			FindMissingPrefabInGO(childT.gameObject, prefabName, false, errors);
 		}
 	}
 
