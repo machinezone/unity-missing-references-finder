@@ -21,6 +21,7 @@ namespace MissingRefsFinder
             return null;
         }
 
+        [MenuItem("Tools/Find All Missing References", false, 50)]
         public static void InspectAll()
         {
             var output_path = GetArg("-outfile");
