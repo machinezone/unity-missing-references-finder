@@ -4,8 +4,13 @@ using UnityEditor;
 using UnityEngine;
 
 public class MissingPrefabsFinder { // Based on this post: https://forum.unity.com/threads/detecting-missing-nested-prefab.697562/
+	public static ErrorAggregator Run()
+	{
+		return Init();
+	}
+	
 	[MenuItem("Tools/Find Missing Prefabs", false, 50)]
-	static void Init() {
+	static ErrorAggregator Init() {
 		var allPrefabs = GetAllPrefabs();
 		ErrorAggregator errors = new();
 			
@@ -32,31 +37,26 @@ public class MissingPrefabsFinder { // Based on this post: https://forum.unity.c
 			}
 			catch (Exception ex)
 			{
-				errors.Capture("For some reason, prefab " + prefab + " won't cast to GameObject", prefab);
+				Debug.LogError("For some reason, prefab " + prefab + " won't cast to GameObject");
 			}
 		}
 
 		EditorUtility.ClearProgressBar();
+		return errors;
 	}
 
 
 	static void FindMissingPrefabInGO(GameObject g, string prefabName, bool isRoot, ErrorAggregator errors)
 	{
-		if (g.name.Contains("Missing Prefab")) {
-			errors.Capture($"{prefabName} has missing prefab {g.name}", prefabName);
-			return;
-
-		}
-
-		if (PrefabUtility.IsPrefabAssetMissing(g)) {
-			errors.Capture($"{prefabName} has missing prefab {g.name}", prefabName);
-			return;
-		}
-
-		if (PrefabUtility.IsDisconnectedFromPrefabAsset(g))
+		if (g.name.Contains("Missing Prefab") || PrefabUtility.IsPrefabAssetMissing(g) || PrefabUtility.IsDisconnectedFromPrefabAsset(g))
 		{
-			errors.Capture($"{prefabName} has missing prefab {g.name}", prefabName);
+			errors.Capture(new ErrorAggregator.MissingPrefab()
+			{
+				gameobject = g,
+				prefab = prefabName,
+			});
 			return;
+
 		}
 
 		if (!isRoot) {

@@ -81,7 +81,7 @@ public class MissingReferencesFinder : MonoBehaviour {
     }*/
 
     [MenuItem("Tools/Find Missing References/In assets", false, 52)]
-    public static void FindMissingReferencesInAssets() {
+    public static ErrorAggregator FindMissingReferencesInAssets() {
         showInitialProgressBar("all assets");
         var allAssetPaths = AssetDatabase.GetAllAssetPaths();
         var objs = allAssetPaths
@@ -89,8 +89,9 @@ public class MissingReferencesFinder : MonoBehaviour {
                    .ToArray();
 
         var wasCancelled = false;
-        var count = findMissingReferences("Project", objs, () => { wasCancelled = false; }, () => { wasCancelled = true; });
-        showFinishDialog(wasCancelled, count);
+        var errors = findMissingReferences("Project", objs, () => { wasCancelled = false; }, () => { wasCancelled = true; });
+        showFinishDialog(wasCancelled, errors);
+        return errors;
     }
 
     [MenuItem("Tools/Find Missing References/Everywhere", false, 53)]
@@ -199,8 +200,13 @@ public class MissingReferencesFinder : MonoBehaviour {
 
         for (var j = 0; j < components.Length; j++) {
             var c = components[j];
-            if (!c) {
-                errors.Capture($"Missing Component in GameObject: {FullPath(go)} in {context}", context: go);
+            if (!c)
+            {
+                errors.Capture(new ErrorAggregator.MissingGameObjectComponent()
+                {
+                    gameobject = go,
+                    parentAssetPath = context,
+                });
                 continue;
             }
 
@@ -268,8 +274,13 @@ public class MissingReferencesFinder : MonoBehaviour {
                 }
 
                 var c = components[j];
-                if (!c) {
-                    errors.Capture($"Missing COMPONENT: [{context}]\"{FullPath(go)}\"", context: go);
+                if (!c)
+                {
+                    errors.Capture(new ErrorAggregator.MissingGameObjectComponent()
+                    {
+                        gameobject = go,
+                        parentAssetPath = context,
+                    });
                     continue;
                 }
 
@@ -310,7 +321,7 @@ public class MissingReferencesFinder : MonoBehaviour {
 
     private static void showFinishDialog(bool wasCancelled, ErrorAggregator errors)
     {
-        var count = errors.Count();
+        var count = errors.ErrorMessages();
         EditorUtility.ClearProgressBar();
         EditorUtility.DisplayDialog("Missing References Finder",
                                     wasCancelled ?
@@ -319,17 +330,14 @@ public class MissingReferencesFinder : MonoBehaviour {
                                     "Ok");
     }
 
-    private static ErrorAggregator.ErrorContext getError(string context, GameObject go, string componentName, string property) {
-        return new ErrorAggregator.ErrorContext()
+    private static ErrorAggregator.MissingGameObjectReference getError(string context, GameObject go, string componentName, string property) {
+        return new ErrorAggregator.MissingGameObjectReference()
         {
-            context = go,
-            message = $"Missing REFERENCE: [{context}]{FullPath(go)}. Component: {componentName}, Property: {property}"
+            gameobject = go,
+            componentName = componentName,
+            propertName = property,
+            parentAssetPath = context,
         };
-    }
-
-    private static string FullPath(GameObject go) {
-        var parent = go.transform.parent;
-        return parent == null ? go.name : FullPath(parent.gameObject) + "/" + go.name;
     }
 
     private static void clearConsole() {
