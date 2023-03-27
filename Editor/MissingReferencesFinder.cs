@@ -321,7 +321,7 @@ public class MissingReferencesFinder : MonoBehaviour {
 
     private static void showFinishDialog(bool wasCancelled, ErrorAggregator errors)
     {
-        var count = errors.ErrorMessages();
+        var count = errors.ErrorMessages().Count();
         EditorUtility.ClearProgressBar();
         EditorUtility.DisplayDialog("Missing References Finder",
                                     wasCancelled ?
