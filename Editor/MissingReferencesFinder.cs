@@ -164,7 +164,7 @@ public class MissingReferencesFinder : MonoBehaviour {
     }
 
     private static bool isProjectAsset(string path) {
-#if UNITY_EDITOR_OSX
+#if UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
         return !path.StartsWith("/");
 #else
         return path.Substring(1, 2) != ":/";
