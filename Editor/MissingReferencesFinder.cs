@@ -219,7 +219,7 @@ public class MissingReferencesFinder : MonoBehaviour {
                      && sp.objectReferenceInstanceIDValue != 0)
                     {
                         errors.Capture(getError(context, go, c.GetType().Name,
-                            ObjectNames.NicifyVariableName(sp.name)));
+                            $"{ObjectNames.NicifyVariableName(sp.name)} at path {sp.propertyPath}"));
                     }
                 }
             }
