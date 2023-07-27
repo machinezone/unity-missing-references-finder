@@ -39,7 +39,7 @@ namespace MissingRefsFinder
                 }
 
                 // write an empty last line to ensure the file is always created, even if no errors were produced
-                writer.WriteLine("\n");
+                writer.WriteLine("");
             }
         }
     }
